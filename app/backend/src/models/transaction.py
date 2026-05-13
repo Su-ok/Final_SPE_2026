@@ -9,10 +9,10 @@ import uuid
 
 
 class TransactionCreate(BaseModel):
-    sender_account: str = Field(..., example="ACC-001234")
-    receiver_account: str = Field(..., example="ACC-005678")
-    amount: float = Field(..., gt=0, le=1_000_000, example=500.00)
-    transaction_type: str = Field(default="transfer", example="transfer")
+    sender_account: str = Field(..., json_schema_extra={"example": "ACC-001234"})
+    receiver_account: str = Field(..., json_schema_extra={"example": "ACC-005678"})
+    amount: float = Field(..., gt=0, le=1_000_000, json_schema_extra={"example": 500.00})
+    transaction_type: str = Field(default="transfer", json_schema_extra={"example": "transfer"})
     currency: str = Field(default="USD", max_length=3)
     metadata: Optional[dict] = None
 

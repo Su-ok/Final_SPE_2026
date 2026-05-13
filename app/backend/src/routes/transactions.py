@@ -6,10 +6,10 @@ GET  /api/v1/transactions/{id} → Get single transaction
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 from models.transaction import TransactionCreate, TransactionResponse, TransactionListResponse
-from services.fraud_detection import fraud_service
+from services.fraud_detection import fraud_service, FRAUD_THRESHOLD
 from utils.logger import get_structured_logger
 
 router = APIRouter()
@@ -29,7 +29,7 @@ async def create_transaction(payload: TransactionCreate):
         tx_type=payload.transaction_type,
     )
 
-    status = "FLAGGED" if fraud_score > 0.7 else "COMPLETED"
+    status = "FLAGGED" if fraud_score > FRAUD_THRESHOLD else "COMPLETED"
 
     tx = {
         "transaction_id": tx_id,
@@ -40,8 +40,8 @@ async def create_transaction(payload: TransactionCreate):
         "transaction_type": payload.transaction_type,
         "status": status,
         "fraud_score": fraud_score,
-        "timestamp": datetime.utcnow().isoformat(),
-        "message": "Transaction flagged for review." if fraud_score > 0.7 else "Transaction completed successfully.",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "message": "Transaction flagged for review." if fraud_score > FRAUD_THRESHOLD else "Transaction completed successfully.",
     }
 
     _transactions[tx_id] = tx

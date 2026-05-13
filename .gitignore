@@ -18,3 +18,5 @@ postgres-data/
 elasticsearch-data/
 jenkins-home/
 test-results.xml
+.venv/
+

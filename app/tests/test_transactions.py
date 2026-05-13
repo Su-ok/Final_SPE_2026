@@ -1,17 +1,14 @@
 """
 FinShield - Automated Test Suite
-Run with: pytest tests/ -v
+Run with: pytest app/tests/ -v
 """
-
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../backend/src"))
 
 import pytest
 from fastapi.testclient import TestClient
 from main import app
 
 client = TestClient(app)
+
 
 
 def test_health_check():

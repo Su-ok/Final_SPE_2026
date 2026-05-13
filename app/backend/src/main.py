@@ -7,7 +7,7 @@ import logging
 import json
 import uuid
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -44,9 +44,9 @@ app.add_middleware(
 @app.middleware("http")
 async def request_logger(request: Request, call_next):
     request_id = str(uuid.uuid4())
-    start = datetime.utcnow()
+    start = datetime.now(timezone.utc)
     response = await call_next(request)
-    duration = (datetime.utcnow() - start).total_seconds() * 1000
+    duration = (datetime.now(timezone.utc) - start).total_seconds() * 1000
     logger.info(
         "HTTP request processed",
         extra={
@@ -69,7 +69,7 @@ async def health():
         "status": "healthy",
         "service": "finshield-api",
         "version": os.getenv("APP_VERSION", "1.0.0"),
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 @app.get("/", response_class=HTMLResponse)
@@ -305,7 +305,7 @@ async function sendTransaction() {
       transaction_type: document.getElementById('txtype').value,
     };
     const res = await apiFetch('/', { method: 'POST', body: JSON.stringify(body) });
-    const isFraud = res.fraud_score > 0.7;
+    const isFraud = res.fraud_score > 0.60;
     alert.className = 'alert-box show' + (isFraud ? ' alert-err' : '');
     alert.textContent = isFraud
       ? `⚠️ Transaction flagged! Fraud score: ${(res.fraud_score*100).toFixed(0)}% — ID: ${res.transaction_id}`
@@ -329,8 +329,8 @@ async function loadTransactions() {
     stats = { total: data.transactions.length, volume: 0, fraud: 0 };
     list.innerHTML = data.transactions.slice().reverse().map(tx => {
       stats.volume += tx.amount;
-      if (tx.fraud_score > 0.7) stats.fraud++;
-      const isFraud = tx.fraud_score > 0.7;
+      if (tx.fraud_score > 0.60) stats.fraud++;
+      const isFraud = tx.fraud_score > 0.60;
       const isReceive = tx.transaction_type === 'deposit';
       const icon = isFraud ? '⚠️' : isReceive ? '⬇️' : '⬆️';
       const iconClass = isFraud ? 'fraud' : isReceive ? 'receive' : 'send';

@@ -90,8 +90,12 @@ docker exec finshield-vault vault kv put secret/finshield/api-keys \
 
 hr
 log "Step 6/6 — Running automated test suite..."
-pip install -q pytest httpx fastapi pydantic python-dotenv uvicorn 2>/dev/null
-python3 -m pytest "$PROJECT_ROOT/app/tests/" -v --tb=short \
+if [[ ! -d "$PROJECT_ROOT/.venv" ]]; then
+  python3 -m venv "$PROJECT_ROOT/.venv"
+fi
+"$PROJECT_ROOT/.venv/bin/pip" install -q \
+  pytest httpx fastapi pydantic python-dotenv uvicorn hvac pytest-asyncio 2>/dev/null
+"$PROJECT_ROOT/.venv/bin/python" -m pytest "$PROJECT_ROOT/app/tests/" -v --tb=short \
   && ok "All tests passed ✅"
 
 echo ""
@@ -105,7 +109,7 @@ cat << 'SUCCESS'
   ║  📖 API Docs        →   http://localhost:8000/docs            ║
   ║  🔐 Vault UI        →   http://localhost:8200/ui              ║
   ║     Vault Token     →   finshield-root-token                  ║
-  ║  ⚙️  Jenkins         →   http://localhost:8080                 ║
+  ║  ⚙️  Jenkins         →   http://localhost:9090                 ║
   ║  📊 Kibana          →   http://localhost:5601                  ║
   ║  🔍 Elasticsearch   →   http://localhost:9200                  ║
   ╚═══════════════════════════════════════════════════════════════╝
