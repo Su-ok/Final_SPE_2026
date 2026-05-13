@@ -1,10 +1,10 @@
 """
-FinShield - Transaction Routes
-POST /api/v1/transactions      → Create transaction
-GET  /api/v1/transactions      → List all transactions
-GET  /api/v1/transactions/{id} → Get single transaction
+FinShield - Transaction Routes (original, clean)
+POST   /api/v1/transactions/      → Create & complete instant transaction
+GET    /api/v1/transactions/      → List all transactions
+GET    /api/v1/transactions/{id}  → Get single transaction
+DELETE /api/v1/transactions/{id}  → Delete transaction
 """
-
 import uuid
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
@@ -15,7 +15,6 @@ from utils.logger import get_structured_logger
 router = APIRouter()
 logger = get_structured_logger("finshield.transactions")
 
-# In-memory store (replace with PostgreSQL via Vault creds in production)
 _transactions: dict[str, dict] = {}
 
 
@@ -23,42 +22,22 @@ _transactions: dict[str, dict] = {}
 async def create_transaction(payload: TransactionCreate):
     tx_id = f"TXN-{uuid.uuid4().hex[:12].upper()}"
     fraud_score = fraud_service.score(
-        amount=payload.amount,
-        sender=payload.sender_account,
-        receiver=payload.receiver_account,
-        tx_type=payload.transaction_type,
+        amount=payload.amount, sender=payload.sender_account,
+        receiver=payload.receiver_account, tx_type=payload.transaction_type,
     )
-
     status = "FLAGGED" if fraud_score > FRAUD_THRESHOLD else "COMPLETED"
-
     tx = {
-        "transaction_id": tx_id,
-        "sender_account": payload.sender_account,
-        "receiver_account": payload.receiver_account,
-        "amount": payload.amount,
-        "currency": payload.currency,
-        "transaction_type": payload.transaction_type,
-        "status": status,
-        "fraud_score": fraud_score,
+        "transaction_id": tx_id, "sender_account": payload.sender_account,
+        "receiver_account": payload.receiver_account, "amount": payload.amount,
+        "currency": payload.currency, "transaction_type": payload.transaction_type,
+        "status": status, "fraud_score": fraud_score,
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "message": "Transaction flagged for review." if fraud_score > FRAUD_THRESHOLD else "Transaction completed successfully.",
+        "message": "Transaction flagged for review." if fraud_score > FRAUD_THRESHOLD
+                   else "Transaction completed successfully.",
     }
-
     _transactions[tx_id] = tx
-
-    logger.info(
-        "Transaction created",
-        extra={
-            "transaction_id": tx_id,
-            "amount": payload.amount,
-            "currency": payload.currency,
-            "status": status,
-            "fraud_score": fraud_score,
-            "sender": payload.sender_account,
-            "receiver": payload.receiver_account,
-        }
-    )
-
+    logger.info("Transaction created", extra={"transaction_id": tx_id, "amount": payload.amount,
+        "status": status, "fraud_score": fraud_score})
     return TransactionResponse(**tx)
 
 
@@ -72,7 +51,6 @@ async def list_transactions():
 async def get_transaction(transaction_id: str):
     tx = _transactions.get(transaction_id)
     if not tx:
-        logger.warning("Transaction not found", extra={"transaction_id": transaction_id})
         raise HTTPException(status_code=404, detail=f"Transaction {transaction_id} not found")
     return TransactionResponse(**tx)
 
