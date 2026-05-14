@@ -1,151 +1,57 @@
-// FinShield — Jenkins CI/CD Pipeline
-// Triggers on GitHub push → Build → Test → Docker Push → Deploy
-
 pipeline {
     agent any
 
     environment {
-        APP_NAME        = "finshield-api"
-        DOCKERHUB_USER  = "siddheshmahajan"
-        DOCKER_TAG      = "${env.BUILD_NUMBER}"
-        VAULT_ADDR      = "http://vault:8200"
-        VAULT_TOKEN     = "finshield-root-token"
-        KUBECONFIG_PATH = "/var/jenkins_home/.kube/config"
-    }
-
-    triggers {
-        pollSCM('* * * * *') // Check GitHub for changes every single minute
+        DOCKER_IMAGE = "siddheshmahajan/finshield-api"
+        DOCKER_TAG   = "${BUILD_NUMBER}"
+        VAULT_ADDR   = "http://host.docker.internal:8200"
+        VAULT_TOKEN  = "finshield-root-token"
     }
 
     options {
+        timeout(time: 20, unit: 'MINUTES')
         timestamps()
-        buildDiscarder(logRotator(numToKeepStr: '10'))
-        timeout(time: 30, unit: 'MINUTES')
     }
 
     stages {
-
-        // ─────────────────────────────────────────────────────────────────────
-        stage('📥 Checkout') {
-        // ─────────────────────────────────────────────────────────────────────
+        // =======================================================
+        // 1. PREPARATION
+        // =======================================================
+        stage('Preparation') {
             steps {
-                echo "🔍 Checking out source from GitHub..."
+                echo "🏗️  Starting FinShield Pipeline for Build #${DOCKER_TAG}"
                 checkout scm
-                sh "git log --oneline -5"
             }
         }
 
-        // ─────────────────────────────────────────────────────────────────────
-        stage('⚙️ Prepare Variables') {
-        // ─────────────────────────────────────────────────────────────────────
+        // =======================================================
+        // 2. BUILD IMAGE
+        // =======================================================
+        stage('Build Image') {
             steps {
-                script {
-                    env.DOCKER_IMAGE = "${env.DOCKERHUB_USER}/${env.APP_NAME}"
-                }
-                echo "Docker Image: ${env.DOCKER_IMAGE}"
-                echo "Docker Tag: ${env.DOCKER_TAG}"
+                sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} -t ${DOCKER_IMAGE}:latest ./app/backend"
+                echo "✅ Built ${DOCKER_IMAGE}:${DOCKER_TAG}"
             }
         }
 
-        // ─────────────────────────────────────────────────────────────────────
-        stage('🔐 Vault Secret Pull') {
-        // ─────────────────────────────────────────────────────────────────────
-            steps {
-                script {
-                    echo "Detecting Vault connection..."
-                    env.DOCKERHUB_PASS = sh(
-                        script: """
-                            set +e
-                            # Try multiple possible hostnames
-                            for host in vault finshield-v3-vault-1 finshield-vault; do
-                                response=\$(curl -s --connect-timeout 2 -H "X-Vault-Token: ${VAULT_TOKEN}" http://\$host:8200/v1/secret/data/finshield/dockerhub)
-                                if [ ! -z "\$response" ] && echo "\$response" | grep -q "data"; then
-                                    echo "✅ Connected to \$host"
-                                    echo "\$response" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data']['data']['password'])"
-                                    exit 0
-                                fi
-                            done
-                            echo "❌ ERROR: Could not reach Vault on any known hostname."
-                            exit 1
-                        """,
-                        returnStdout: true
-                    ).trim().split('\n')[-1] 
-                }
-                echo "Vault secret pull complete ✅"
-            }
-        }
-
-        // ─────────────────────────────────────────────────────────────────────
-        stage('🧪 Run Automated Tests') {
-
-    steps {
-
-        sh """
-
-            cd app/backend
-
-            # Create virtual environment
-            python3 -m venv venv
-
-            # Activate venv
-            . venv/bin/activate
-
-            # Upgrade pip
-            pip install --upgrade pip
-
-            # Install dependencies
-            pip install -r requirements.txt
-
-            pip install pytest httpx
-
-            cd ../..
-
-            # Run tests
-            app/backend/venv/bin/python -m pytest \
-                app/tests/ \
-                -v \
-                --tb=short \
-                --junitxml=test-results.xml
-
-        """
-    }
-
-    post {
-
-        always {
-
-            junit(
-                allowEmptyResults: true,
-                testResults: 'test-results.xml'
-            )
-        }
-
-        failure {
-
-            echo "❌ Tests failed! Aborting pipeline."
-        }
-    }
-}
-
-        // ─────────────────────────────────────────────────────────────────────
-        stage('🐳 Build Docker Image') {
-        // ─────────────────────────────────────────────────────────────────────
+        // =======================================================
+        // 3. UNIT TESTS
+        // =======================================================
+        stage('Unit Tests') {
             steps {
                 sh """
-                    echo "Building Docker image: ${DOCKER_IMAGE}:${DOCKER_TAG}"
-                    docker build \
-                        --build-arg APP_VERSION=${DOCKER_TAG} \
-                        -t ${DOCKER_IMAGE}:${DOCKER_TAG} \
-                        -t ${DOCKER_IMAGE}:latest \
-                        app/backend/
-                    docker images | grep ${APP_NAME}
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install -r app/backend/requirements.txt pytest
+                    pytest app/backend/tests
                 """
             }
         }
 
-        // ─────────────────────────────────────────────────────────────────────
-        stage('🔒 Security Scan (Trivy)') {
-        // ─────────────────────────────────────────────────────────────────────
+        // =======================================================
+        // 4. SECURITY SCAN (TRIVY)
+        // =======================================================
+        stage('Security Scan') {
             steps {
                 sh """
                     set +e
@@ -160,23 +66,37 @@ pipeline {
             }
         }
 
-        // ─────────────────────────────────────────────────────────────────────
-        stage('📤 Push to Docker Hub') {
-        // ─────────────────────────────────────────────────────────────────────
+        // =======================================================
+        // 5. PUSH TO DOCKER HUB
+        // =======================================================
+        stage('Push to Docker Hub') {
             steps {
-                sh """
-                    echo \$DOCKERHUB_PASS | docker login -u \$DOCKERHUB_USER --password-stdin
-                    docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
-                    docker push ${DOCKER_IMAGE}:latest
-                    echo "✅ Pushed ${DOCKER_IMAGE}:${DOCKER_TAG} to Docker Hub"
-                    docker logout
-                """
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
+                    sh """
+                        echo \$DOCKERHUB_PASS | docker login -u \$DOCKERHUB_USER --password-stdin
+                        docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                        docker push ${DOCKER_IMAGE}:latest
+                        echo "✅ Pushed ${DOCKER_IMAGE}:${DOCKER_TAG} to Docker Hub"
+                        docker logout
+                    """
+                }
             }
         }
 
-        // ─────────────────────────────────────────────────────────────────────
-        stage('☸️ Kubernetes Deploy') {
-        // ─────────────────────────────────────────────────────────────────────
+        // =======================================================
+        // 6. CONFIGURATION AUDIT (ANSIBLE)
+        // =======================================================
+        stage('Configuration Audit') {
+            steps {
+                echo '📋 Starting Ansible Environment Audit...'
+                sh 'ansible-playbook -i "localhost," -c local devops/ansible/playbooks/audit.yml'
+            }
+        }
+
+        // =======================================================
+        // 7. DEPLOY TO KUBERNETES
+        // =======================================================
+        stage('Kubernetes Deploy') {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
                     sh """
@@ -198,11 +118,11 @@ pipeline {
                         sed -i -E "s|https://[0-9.]+:|https://minikube:|g" \$KUBECONFIG
                         echo "Configured kubeconfig to use 'minikube' hostname"
 
-                        # Apply changes
+                        # Deploy
                         \$KUBECTL_CMD --kubeconfig=\$KUBECONFIG apply -f devops/kubernetes/deployment.yaml
                         \$KUBECTL_CMD --kubeconfig=\$KUBECONFIG apply -f devops/kubernetes/service.yaml
-
-                        echo "✅ Deployment successful"
+                        \$KUBECTL_CMD --kubeconfig=\$KUBECONFIG apply -f devops/kubernetes/hpa.yaml
+                        echo "✅ Deployment updated in Minikube"
                     """
                 }
             }
@@ -214,15 +134,16 @@ pipeline {
             echo """
             ╔══════════════════════════════════════════╗
             ║  ✅ FinShield Pipeline SUCCESS            ║
-            ║  Build #${env.BUILD_NUMBER} deployed      ║
+            ║  Build #${DOCKER_TAG} deployed      ║
             ╚══════════════════════════════════════════╝
             """
+            sh "docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG} || true"
         }
         failure {
             echo "❌ Pipeline failed at stage. Check logs above."
+            sh "docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG} || true"
         }
         always {
-            sh "docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG} || true"
             cleanWs()
         }
     }
