@@ -173,6 +173,35 @@ pipeline {
                 """
             }
         }
+
+        // ─────────────────────────────────────────────────────────────────────
+        stage('☸️ Kubernetes Deploy') {
+        // ─────────────────────────────────────────────────────────────────────
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                    sh """
+                        # Download kubectl if missing
+                        if ! command -v kubectl > /dev/null 2>&1; then
+                            echo "Installing kubectl..."
+                            curl -LO "https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl"
+                            chmod +x kubectl
+                            KUBECTL_CMD="./kubectl"
+                        else
+                            KUBECTL_CMD="kubectl"
+                        fi
+
+                        # Update manifest with correct tag
+                        sed -i "s|IMAGE_TAG|${DOCKER_TAG}|g" devops/kubernetes/deployment.yaml
+
+                        # Apply changes
+                        \$KUBECTL_CMD --kubeconfig=\$KUBECONFIG apply -f devops/kubernetes/deployment.yaml
+                        \$KUBECTL_CMD --kubeconfig=\$KUBECONFIG apply -f devops/kubernetes/service.yaml
+
+                        echo "✅ Deployment successful"
+                    """
+                }
+            }
+        }
     }
 
     post {
