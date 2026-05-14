@@ -63,25 +63,55 @@ pipeline {
 
         // ─────────────────────────────────────────────────────────────────────
         stage('🧪 Run Automated Tests') {
-        // ─────────────────────────────────────────────────────────────────────
-            steps {
-                sh """
-                    cd app/backend
-                    pip3 install -r requirements.txt --quiet
-                    pip3 install pytest httpx --quiet
-                    cd ../..
-                    python3 -m pytest app/tests/ -v --tb=short --junitxml=test-results.xml
-                """
-            }
-            post {
-                always {
-                    junit 'test-results.xml'
-                }
-                failure {
-                    echo "❌ Tests failed! Aborting pipeline."
-                }
-            }
+
+    steps {
+
+        sh """
+
+            cd app/backend
+
+            # Create virtual environment
+            python3 -m venv venv
+
+            # Activate venv
+            . venv/bin/activate
+
+            # Upgrade pip
+            pip install --upgrade pip
+
+            # Install dependencies
+            pip install -r requirements.txt
+
+            pip install pytest httpx
+
+            cd ../..
+
+            # Run tests
+            app/backend/venv/bin/python -m pytest \
+                app/tests/ \
+                -v \
+                --tb=short \
+                --junitxml=test-results.xml
+
+        """
+    }
+
+    post {
+
+        always {
+
+            junit(
+                allowEmptyResults: true,
+                testResults: 'test-results.xml'
+            )
         }
+
+        failure {
+
+            echo "❌ Tests failed! Aborting pipeline."
+        }
+    }
+}
 
         // ─────────────────────────────────────────────────────────────────────
         stage('🐳 Build Docker Image') {
