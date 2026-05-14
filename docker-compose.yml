@@ -6,6 +6,8 @@
 networks:
   finshield-net:
     driver: bridge
+  minikube:
+    external: true
 
 
 # =========================================================
@@ -330,3 +332,4 @@ services:
 
     networks:
       - finshield-net
+      - minikube
