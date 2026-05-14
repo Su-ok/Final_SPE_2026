@@ -199,6 +199,10 @@ services:
           username=siddheshmahajan \
           password='Friends@123'
 
+        vault kv put secret/finshield/dockerhub \
+          username=siddheshmahajan \
+          password='Friends@123'
+
         echo "Vault secrets initialized"
 
     networks:
