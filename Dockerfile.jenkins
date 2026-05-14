@@ -1,0 +1,23 @@
+# =========================================================
+# Custom Jenkins Image for FinShield
+# Includes:
+# - Python3
+# - pip3
+# - Docker CLI
+# - Git
+# - Curl
+# =========================================================
+
+FROM jenkins/jenkins:lts-jdk17
+
+USER root
+
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    docker.io \
+    git \
+    curl \
+    && apt-get clean
+
+USER jenkins

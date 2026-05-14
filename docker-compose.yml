@@ -174,7 +174,9 @@ services:
 
   # ── 8. Jenkins (CI/CD) ────────────────────────────────────────────────────
   jenkins:
-    image: jenkins/jenkins:lts-jdk17
+    build:
+      context: .
+      dockerfile: Dockerfile.jenkins
     container_name: finshield-jenkins
     restart: unless-stopped
     privileged: true
@@ -186,6 +188,6 @@ services:
       - DOCKER_HOST=unix:///var/run/docker.sock
     volumes:
       - jenkins-data:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock   # Docker-in-Docker access
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - finshield-net
