@@ -55,9 +55,9 @@ pipeline {
                     echo "Detecting Vault connection..."
                     env.DOCKERHUB_PASS = sh(
                         script: """
+                            set +e
                             # Try multiple possible hostnames
                             for host in vault finshield-v3-vault-1 finshield-vault; do
-                                echo "Trying \$host..."
                                 response=\$(curl -s --connect-timeout 2 -H "X-Vault-Token: ${VAULT_TOKEN}" http://\$host:8200/v1/secret/data/finshield/dockerhub)
                                 if [ ! -z "\$response" ] && echo "\$response" | grep -q "data"; then
                                     echo "✅ Connected to \$host"
@@ -69,7 +69,7 @@ pipeline {
                             exit 1
                         """,
                         returnStdout: true
-                    ).trim().split('\n')[-1] // Get the last line (the password)
+                    ).trim().split('\n')[-1] 
                 }
                 echo "Vault secret pull complete ✅"
             }
