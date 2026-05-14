@@ -14,7 +14,7 @@ pipeline {
     }
 
     triggers {
-        pollSCM('H/1 * * * *') // Check GitHub for changes every minute
+        pollSCM('* * * * *') // Check GitHub for changes every single minute
     }
 
     options {
