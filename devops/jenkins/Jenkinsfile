@@ -17,7 +17,7 @@ pipeline {
         // TEMPORARY FOR TESTING
         // Later replace with:
         // credentials('vault-root-token')
-        VAULT_TOKEN     = "root"
+        VAULT_TOKEN     = "finshield-root-token"
 
         KUBECONFIG_PATH = "/var/jenkins_home/.kube/config"
     }
