@@ -193,10 +193,10 @@ pipeline {
                         # Update manifest with correct tag
                         sed -i "s|IMAGE_TAG|${DOCKER_TAG}|g" devops/kubernetes/deployment.yaml
 
-                        # Bridge Minikube network gap (Dynamic IP detection)
-                        HOST_IP=\$(ip route show | grep default | awk '{print \$3}')
-                        echo "Detected Host IP: \$HOST_IP"
-                        sed -i "s|192.168.49.2|\$HOST_IP|g" \$KUBECONFIG
+                        # Bridge Minikube network gap (Final Solution)
+                        # This replaces whatever IP Minikube has with the 'minikube' hostname
+                        sed -i -E "s|https://[0-9.]+:|https://minikube:|g" \$KUBECONFIG
+                        echo "Configured kubeconfig to use 'minikube' hostname"
 
                         # Apply changes
                         \$KUBECTL_CMD --kubeconfig=\$KUBECONFIG apply -f devops/kubernetes/deployment.yaml
