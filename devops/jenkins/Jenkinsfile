@@ -134,12 +134,14 @@ pipeline {
         // ─────────────────────────────────────────────────────────────────────
             steps {
                 sh """
-                    if command -v trivy &> /dev/null; then
+                    set +e
+                    if command -v trivy > /dev/null 2>&1; then
                         trivy image --exit-code 0 --severity HIGH,CRITICAL \
                             --format table ${DOCKER_IMAGE}:${DOCKER_TAG}
                     else
                         echo "⚠️  Trivy not installed, skipping image scan."
                     fi
+                    set -e
                 """
             }
         }
