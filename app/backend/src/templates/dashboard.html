@@ -475,12 +475,26 @@ async function loadPort(){
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
+async function checkActiveHolds(){
+  if(!tok) return;
+  const d = await api('/api/v1/stocks/my-holds');
+  if(d.holds && d.holds.length){
+    // Find the first active HELD status
+    const active = d.holds.find(h => h.status === 'HELD');
+    if(active){
+       actHold = active.hold_id;
+       showHoldBox(active);
+    }
+  }
+}
+
 (function init(){
   if(tok&&usr){
     document.getElementById('authModal').style.display='none';
     document.getElementById('uname').textContent='👤 '+usr.username;
     document.getElementById('lob').style.display='inline-block';
     loadDash();loadComp();
+    checkActiveHolds();
   }
   setInterval(loadDash,10000);
   setInterval(()=>{if(document.getElementById('pg-s').classList.contains('on'))loadComp();},8000);
