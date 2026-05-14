@@ -54,8 +54,8 @@ input:focus,select:focus{border-color:var(--ac)}
 .av{background:rgba(34,197,94,.15);color:var(--gr);border-color:rgba(34,197,94,.3)}
 .av:hover{background:rgba(34,197,94,.3);transform:scale(1.1)}
 .sel{background:rgba(167,139,250,.25);color:var(--pu);border-color:var(--pu);transform:scale(1.1)}
-.hd{background:rgba(245,158,11,.12);color:var(--ye);border-color:rgba(245,158,11,.3);cursor:not-allowed}
-.so{background:rgba(239,68,68,.12);color:var(--re);border-color:rgba(239,68,68,.2);cursor:not-allowed}
+.unit.hd{background:rgba(245,158,11,.12);color:var(--ye);border-color:rgba(245,158,11,.3);cursor:not-allowed}
+.unit.so{background:rgba(239,68,68,.12);color:var(--re);border-color:rgba(239,68,68,.2);cursor:not-allowed}
 .tw{background:var(--bd);border-radius:999px;height:6px;margin:.45rem 0;overflow:hidden}
 .tb{height:100%;border-radius:999px;transition:width 1s linear,background .5s}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
@@ -155,8 +155,9 @@ input:focus,select:focus{border-color:var(--ac)}
   </div>
   <div id="mxView" style="display:none">
     <button onclick="backComp()" style="background:transparent;border:1px solid var(--bd);color:var(--tx);padding:.38rem .9rem;border-radius:8px;cursor:pointer;font-size:.8rem;margin-bottom:1rem">← Back</button>
+    <div id="mxStatusArea" style="margin-bottom:1rem"></div>
     <div class="g2">
-      <div class="card">
+      <div class="card" style="grid-column: span 2">
         <div class="ct" id="mxHead"></div>
         <div id="mxGrid"></div>
         <div id="selBox" style="display:none;margin-top:.9rem;background:var(--s2);border-radius:8px;padding:.85rem">
@@ -166,18 +167,24 @@ input:focus,select:focus{border-color:var(--ac)}
         </div>
         <div class="al" id="mxAl"></div>
       </div>
-      <div class="card" id="holdBox" style="display:none">
-        <div class="ct"><span class="dot" style="background:var(--pu);box-shadow:0 0 8px var(--pu)"></span>Active Hold</div>
-        <div style="font-size:.74rem;color:var(--mu)">Hold ID</div>
-        <div id="hId" style="font-family:monospace;color:var(--pu);font-size:.76rem;margin-bottom:.7rem;word-break:break-all"></div>
-        <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:.35rem"><span style="color:var(--mu)">Status</span><span id="hSt" style="font-weight:700"></span></div>
-        <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:.5rem"><span style="color:var(--mu)">Amount</span><span id="hAm" style="font-weight:700;color:var(--ye)"></span></div>
-        <div style="font-size:.72rem;color:var(--mu)">Payment window</div>
-        <div class="tw"><div class="tb" id="hBar" style="width:100%;background:var(--pu)"></div></div>
-        <div style="text-align:center;font-size:.82rem;margin-bottom:.7rem" id="hTm">10:00</div>
-        <div style="display:flex;gap:.5rem">
-          <button class="btn bg bsm" style="flex:1" id="hCon" onclick="doConfirm()">✅ Confirm</button>
-          <button class="btn br bsm" style="flex:1" id="hRel" onclick="doRelease()">✖ Release</button>
+      <div class="card" id="holdBox" style="display:none;grid-column: span 2; border-top: 3px solid var(--pu)">
+        <div class="ct"><span class="dot" style="background:var(--pu);box-shadow:0 0 8px var(--pu)"></span>Active Hold — Action Required</div>
+        <div style="display:grid;grid-template-columns: 1fr 1fr; gap: 1rem">
+          <div>
+            <div style="font-size:.74rem;color:var(--mu)">Hold ID</div>
+            <div id="hId" style="font-family:monospace;color:var(--pu);font-size:.76rem;margin-bottom:.7rem;word-break:break-all"></div>
+            <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:.35rem"><span style="color:var(--mu)">Status</span><span id="hSt" style="font-weight:700"></span></div>
+            <div style="display:flex;justify-content:space-between;font-size:.82rem"><span style="color:var(--mu)">Total Amount</span><span id="hAm" style="font-weight:700;color:var(--ye)"></span></div>
+          </div>
+          <div style="border-left: 1px solid var(--bd); padding-left: 1rem">
+            <div style="font-size:.72rem;color:var(--mu);margin-bottom:.3rem">Payment window</div>
+            <div class="tw"><div class="tb" id="hBar" style="width:100%;background:var(--pu)"></div></div>
+            <div style="text-align:center;font-size:1.2rem;font-weight:800;margin-bottom:.7rem" id="hTm">10:00</div>
+            <div style="display:flex;gap:.5rem">
+              <button class="btn bg" style="flex:1" id="hCon" onclick="doConfirm()">✅ Confirm & Buy</button>
+              <button class="btn br" style="flex:1" id="hRel" onclick="doRelease()">✖ Cancel</button>
+            </div>
+          </div>
         </div>
         <div class="al" id="hAl"></div>
       </div>
@@ -241,6 +248,7 @@ function saveSession(r){
   document.getElementById('uname').textContent='👤 '+usr.username;
   document.getElementById('lob').style.display='inline-block';
   loadDash();loadComp();
+  checkActiveHolds();
 }
 
 function logout(){
@@ -332,7 +340,7 @@ async function openMatrix(cid){
   selU={};updateSelBox();
   document.getElementById('compView').style.display='none';
   document.getElementById('mxView').style.display='block';
-  document.getElementById('holdBox').style.display='none';
+  if(!actHold) document.getElementById('holdBox').style.display='none';
   document.getElementById('mxGrid').innerHTML='<div style="color:var(--mu);font-size:.82rem;padding:.5rem">Loading matrix...</div>';
   document.getElementById('mxAl').className='al';
   await refreshMatrix(cid);
@@ -400,23 +408,32 @@ function updateSelBox(){
 async function doHold(){
   const ids=Object.keys(selU);
   if(!ids.length)return;
-  const r=await api('/api/v1/stocks/hold',{method:'POST',body:JSON.stringify({unit_ids:ids})});
-  if(r.hold_id){
-    actHold=r.hold_id;
-    showHoldBox(r);
-    selU={};updateSelBox();
-    openMatrix(currentCid);
-  } else {
-    al(document.getElementById('mxAl'),r.detail||'Hold failed',true);
+  try {
+    const r=await api('/api/v1/stocks/hold',{method:'POST',body:JSON.stringify({unit_ids:ids})});
+    if(r.hold_id){
+      actHold=r.hold_id;
+      selU={};updateSelBox();
+      await refreshMatrix(currentCid);
+      showHoldBox(r);
+    } else {
+      al(document.getElementById('mxAl'),r.detail||'Hold failed',true);
+    }
+  } catch(e) {
+    al(document.getElementById('mxAl'),'System error. Try again.',true);
   }
 }
 
 function showHoldBox(h){
-  document.getElementById('holdBox').style.display='block';
-  document.getElementById('hId').textContent=h.hold_id;
-  document.getElementById('hAm').textContent='₹'+h.total_amount.toLocaleString('en-IN');
+  const el = document.getElementById('holdBox');
+  if(!el) return;
+  el.style.display='block';
+  // Force scroll to the confirmation box so the user sees it
+  el.scrollIntoView({behavior:'smooth', block:'center'});
+  
+  document.getElementById('hId').textContent=h.hold_id || 'N/A';
+  document.getElementById('hAm').textContent='₹'+(h.total_amount||0).toLocaleString('en-IN');
   updHoldStatus(h);
-  startTimer(h.seconds_remaining);
+  startTimer(h.seconds_remaining || 600);
 }
 
 function updHoldStatus(h){
@@ -471,7 +488,7 @@ async function loadPort(){
   const el=document.getElementById('portCard');
   if(!d.portfolio||!d.portfolio.length){el.innerHTML='<div class="card" style="text-align:center;color:var(--mu);padding:2rem">No purchases yet. Go to Stock Market to buy stocks!</div>';return;}
   let total=0;
-  el.innerHTML=d.portfolio.map(h=>{total+=h.total_amount;return`<div class="card"><div class="ct"><span class="dot" style="background:var(--gr)"></span>${h.hold_id} <span class="chip" style="background:rgba(34,197,94,.15);color:var(--gr)">OWNED</span></div><div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:.35rem"><span style="color:var(--mu)">Units purchased</span><span style="font-weight:700">${h.unit_ids.length}</span></div><div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:.35rem"><span style="color:var(--mu)">Amount paid</span><span style="font-weight:700;color:var(--ye)">₹${h.total_amount.toLocaleString('en-IN')}</span></div><div style="font-size:.72rem;color:var(--mu)">Purchased: ${new Date(h.created_at).toLocaleString()}</div></div>`;}).join('')+`<div style="background:var(--s2);border-radius:8px;padding:.85rem;display:flex;justify-content:space-between;font-size:.9rem"><span style="color:var(--mu)">Total Invested</span><span style="font-weight:800;color:var(--ac)">₹${total.toLocaleString('en-IN')}</span></div>`;
+  el.innerHTML=d.portfolio.map(h=>{total+=h.total_amount;return`<div class="card"><div class="ct"><span class="dot" style="background:var(--gr)"></span>${h.company_name || 'Stock Purchase'} (${h.ticker || 'SEC'}) <span class="chip" style="background:var(--pu);color:white;margin-left:8px;text-transform:capitalize">${h.tier || 'Unit'}</span> <span class="chip" style="background:rgba(34,197,94,.15);color:var(--gr)">OWNED</span></div><div style="font-size:.7rem;color:var(--mu);margin-bottom:.5rem">${h.hold_id}</div><div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:.35rem"><span style="color:var(--mu)">Units purchased</span><span style="font-weight:700">${h.unit_ids.length}</span></div><div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:.35rem"><span style="color:var(--mu)">Amount paid</span><span style="font-weight:700;color:var(--ye)">₹${h.total_amount.toLocaleString('en-IN')}</span></div><div style="font-size:.72rem;color:var(--mu)">Purchased: ${new Date(h.created_at).toLocaleString()}</div></div>`;}).join('')+`<div style="background:var(--s2);border-radius:8px;padding:.85rem;display:flex;justify-content:space-between;font-size:.9rem"><span style="color:var(--mu)">Total Invested</span><span style="font-weight:800;color:var(--ac)">₹${total.toLocaleString('en-IN')}</span></div>`;
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────

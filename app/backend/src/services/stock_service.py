@@ -129,25 +129,40 @@ def _free_unit(unit_id: str):
                   "held_by_username": None, "hold_id": None, "held_until": None})
 
 
+# Global lock to prevent race conditions during inventory checks
+inventory_lock = asyncio.Lock()
+
+
 async def place_hold(unit_ids: list[str], user_id: str, username: str) -> dict:
     now = datetime.now(timezone.utc)
     expires_at = now + timedelta(seconds=HOLD_SECONDS)
-    for uid in unit_ids:
-        u = _units.get(uid)
-        if not u:
-            raise ValueError(f"Unit {uid} not found")
-        if u["status"] != "AVAILABLE":
-            raise ValueError(f"Unit {uid} is {u['status']} — not available")
+    
+    # ATOMIC BLOCK: Ensure no other request can check/modify status during this check
+    async with inventory_lock:
+        for uid in unit_ids:
+            u = _units.get(uid)
+            if not u:
+                raise ValueError(f"Unit {uid} not found")
+            if u["status"] != "AVAILABLE":
+                # Race condition handled: if someone else grabbed it while this request was in flight
+                raise ValueError(f"Unit {uid} is no longer available")
 
-    total = sum(_units[uid]["price"] for uid in unit_ids)
-    hold_id = f"HOLD-{uuid.uuid4().hex[:10].upper()}"
+        total = sum(_units[uid]["price"] for uid in unit_ids)
+        hold_id = f"HOLD-{uuid.uuid4().hex[:10].upper()}"
 
-    for uid in unit_ids:
-        _units[uid].update({"status": "HELD", "held_by_user_id": user_id,
-                             "held_by_username": username, "hold_id": hold_id,
-                             "held_until": expires_at.isoformat()})
+        for uid in unit_ids:
+            _units[uid].update({"status": "HELD", "held_by_user_id": user_id,
+                                 "held_by_username": username, "hold_id": hold_id,
+                                 "held_until": expires_at.isoformat()})
+
+    # Capture company details for the portfolio view
+    first_u = _units[unit_ids[0]]
+    comp = COMPANIES.get(first_u["company_id"], {})
+    comp_name = comp.get("name", "Unknown")
+    ticker = comp.get("ticker", "---")
 
     hold = {"hold_id": hold_id, "user_id": user_id, "username": username,
+            "company_name": comp_name, "ticker": ticker, "tier": first_u["tier"],
             "unit_ids": unit_ids, "total_amount": total, "status": "HELD",
             "created_at": now.isoformat(), "expires_at": expires_at.isoformat(),
             "seconds_remaining": HOLD_SECONDS,

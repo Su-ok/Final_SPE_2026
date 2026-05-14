@@ -42,6 +42,9 @@ class HoldResponse(BaseModel):
     hold_id: str
     user_id: str
     username: str
+    company_name: Optional[str] = "Unknown Company"
+    ticker: Optional[str] = "---"
+    tier: Optional[str] = "Unknown Tier"
     unit_ids: List[str]
     total_amount: float
     status: str
