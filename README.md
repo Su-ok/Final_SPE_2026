@@ -1,240 +1,104 @@
-# 🛡️ FinShield — DevSecOps SDLC Pipeline
+# 🛡️ FinShield — Production DevSecOps Ecosystem
 
+FinShield is a secure, high-concurrency stock transaction platform built as a complete DevSecOps Software Development Life Cycle (SDLC) implementation. 
 
+## 🏗️ Architecture & Pipeline Flow
 
--
-
-## 🏗️ Architecture
-
-```
+```text
 GitHub Push
     │
     ▼
-Jenkins (CI/CD)  ◄──── GitHub Hook Trigger (GITScm Polling)
+Jenkins (CI/CD)  ◄──── GitHub Webhook (Instant Trigger via ngrok)
     │
-    ├── 1. Checkout code
-    ├── 2. Pull secrets from HashiCorp Vault
-    ├── 3. Run pytest automated tests
-    ├── 4. Build Docker image
-    ├── 5. Trivy security scan (DevSecOps)
-    ├── 6. Push to Docker Hub
-    ├── 7. Ansible deploy (roles: vault_setup, deploy)
-    └── 8. kubectl rolling deploy → Kubernetes (HPA enabled)
-                                          │
-                          ┌───────────────┘
-                          ▼
-               FinShield FastAPI App (2–10 pods, HPA)
-                          │
-              ┌───────────┴──────────┐
-              ▼                      ▼
-         PostgreSQL            JSON Logs → Logstash → Elasticsearch → Kibana
-              │
-         HashiCorp Vault (DB creds, API keys, JWT secrets)
+    ├── 1. Environment Cleanup (Space Management)
+    ├── 2. Secret Ingestion (HashiCorp Vault)
+    ├── 3. Automated Testing (Pytest)
+    ├── 4. Secure Container Build (Multi-stage Docker)
+    ├── 5. Image Vulnerability Scan (Trivy DevSecOps)
+    ├── 6. Versioned Artifact Push (Docker Hub)
+    └── 7. Orchestration & Scaling (Kubernetes / Minikube)
+                                           │
+                           ┌───────────────┘
+                           ▼
+               FinShield API Cluster (2–10 Replicas, HPA Enabled)
+                           │
+               ┌───────────┴──────────┐
+               ▼                      ▼
+        PostgreSQL DB          JSON Logs → Logstash → Elasticsearch → Kibana
+               │
+      HashiCorp Vault (Dynamic Secrets, JWT, API Keys)
 ```
 
 ---
 
-## 📁 Project Structure
+## 📁 Key Features
 
-```
-finshield-devsecops/
-├── app/
-│   ├── backend/
-│   │   ├── Dockerfile              # Multi-stage secure build
-│   │   ├── requirements.txt
-│   │   └── src/
-│   │       ├── main.py             # FastAPI app + modern dashboard UI
-│   │       ├── models/
-│   │       │   └── transaction.py  # Pydantic models
-│   │       ├── routes/
-│   │       │   └── transactions.py # CRUD transaction API
-│   │       ├── services/
-│   │       │   └── fraud_detection.py  # Multi-rule fraud engine
-│   │       └── utils/
-│   │           ├── logger.py       # ELK-compatible JSON logger
-│   │           └── vault_client.py # Vault secret fetcher
-│   └── tests/
-│       └── test_transactions.py    # Pytest suite (6 test cases)
-├── devops/
-│   ├── ansible/
-│   │   ├── inventory/
-│   │   │   ├── hosts.yml
-│   │   │   └── group_vars/all.yml
-│   │   ├── playbooks/
-│   │   │   └── deploy.yml          # Main playbook
-│   │   └── roles/
-│   │       ├── deploy/             # Docker pull + compose role
-│   │       └── vault_setup/        # Vault secret bootstrap role
-│   ├── docker-compose/
-│   │   └── docker-compose.yml      # Full stack (App+Vault+PG+ELK+Jenkins)
-│   ├── jenkins/
-│   │   └── Jenkinsfile             # 8-stage pipeline
-│   └── kubernetes/
-│       ├── deployment.yaml         # Rolling update deployment
-│       ├── service.yaml            # LoadBalancer + Ingress
-│       └── hpa.yaml                # Horizontal Pod Autoscaler (2–10 pods)
-├── monitoring/
-│   └── elk/
-│       └── logstash.conf           # Transaction log enrichment pipeline
-└── scripts/
-    ├── setup.sh                    # One-shot full setup
-    └── init_vault.sh               # Interactive Vault bootstrapper
-```
+### 1. Advanced Concurrency Management
+- **Atomic Stock Locking**: Implemented using `asyncio.Lock()` to prevent race conditions during unit reservation.
+- **10-Minute Hold Window**: Automated background workers (`asyncio.create_task`) manage stock hold timeouts.
+- **Session Persistence**: UI state persists across browser refreshes, allowing users to resume transaction windows.
+
+### 2. DevSecOps Security Stack
+- **HashiCorp Vault**: Centralized secret management. No plain-text credentials in the repository.
+- **Trivy Scanning**: Integrated image vulnerability scanning in the Jenkins pipeline.
+- **Network Isolation**: Jenkins-to-K8s bridge via dedicated Docker networks and host mapping.
+
+### 3. Orchestration & Observability
+- **Kubernetes HPA**: Automatically scales pods (2 to 10) based on CPU/Memory load.
+- **Full ELK Stack**: Logstash ingestion with custom Ruby-based log enrichment (Alert Levels, Performance Classifiers).
+- **Kibana Dashboards**: Real-time monitoring of transactions and fraud flags.
 
 ---
 
-## 🚀 Quick Start (One Command)
+## 🔧 Service Catalog & Access
 
-```bash
-# Clone and run everything
-git clone <your-repo-url>
-cd finshield-devsecops
-bash scripts/setup.sh
-```
+| Service | Port | Access URL | Credentials |
+|---------|------|------------|-------------|
+| 🌐 **App UI (K8s)** | 30000+ | `minikube service list` | — |
+| ⚙️ **Jenkins** | 9090 | http://localhost:9090 | Setup on first run |
+| 📊 **Kibana** | 5601 | http://localhost:5601 | — |
+| 🔐 **Vault UI** | 8200 | http://localhost:8200 | Token: `finshield-root-token` |
+| 🔍 **Elasticsearch**| 9200 | http://localhost:9200 | — |
 
 ---
 
-## 🔧 Step-by-Step Commands
+## 🚀 Quick Deployment Guide
 
-### 1. Build & Run (Docker Compose)
-
+### 1. Initialize Infrastructure
 ```bash
-cd devops/docker-compose
-docker compose up -d --build
+# Start Docker Compose (Jenkins, Vault, ELK, Postgres)
+docker compose -p finshield-v3 up -d
 
-# Check all services are up
-docker compose ps
+# Fix Elasticsearch Memory Mapping
+sudo sysctl -w vm.max_map_count=262144
 ```
 
-### 2. Access Services
-
-| Service | URL | Credentials |
-|---------|-----|-------------|
-| 🌐 App Dashboard | http://localhost:8000 | — |
-| 📖 API Docs (Swagger) | http://localhost:8000/docs | — |
-| 🔐 Vault UI | http://localhost:8200/ui | Token: `finshield-root-token` |
-| ⚙️ Jenkins | http://localhost:8080 | Setup on first run |
-| 📊 Kibana | http://localhost:5601 | — |
-| 🔍 Elasticsearch | http://localhost:9200 | — |
-
-### 3. Initialize Vault Secrets
-
+### 2. Start Kubernetes Cluster
 ```bash
-# Automatic (uses defaults for local dev)
-docker exec finshield-vault vault kv put secret/finshield/database \
-  host=postgres port=5432 name=finshield user=finshield password=finshield_secret
-
-docker exec finshield-vault vault kv put secret/finshield/api-keys \
-  fraud_api_key=local-dev-fraud-key jwt_secret=local-dev-jwt-secret
-
-# Interactive (prompts for Docker Hub creds)
-bash scripts/init_vault.sh
+minikube start --driver=docker
+minikube addons enable metrics-server
 ```
 
-### 4. Run Automated Tests
+### 3. Trigger CI/CD Pipeline
+Simply push your code to the `main` branch. The GitHub Webhook (via ngrok) will instantly trigger the build.
 
 ```bash
-pip install pytest httpx fastapi pydantic python-dotenv
-python -m pytest app/tests/ -v
+git add .
+git commit -m "feat: updated transaction logic"
+git push origin main
 ```
 
-### 5. Test the API manually
-
-```bash
-# Health check
-curl http://localhost:8000/health
-
-# Create a transaction
-curl -X POST http://localhost:8000/api/v1/transactions/ \
-  -H "Content-Type: application/json" \
-  -d '{"sender_account":"ACC-001","receiver_account":"ACC-002","amount":500,"transaction_type":"transfer"}'
-
-# List transactions
-curl http://localhost:8000/api/v1/transactions/
-
-# Test fraud detection (high value = flagged)
-curl -X POST http://localhost:8000/api/v1/transactions/ \
-  -H "Content-Type: application/json" \
-  -d '{"sender_account":"ACC-001","receiver_account":"ACC-002","amount":999999,"transaction_type":"withdrawal"}'
-```
-
-### 6. Ansible Deploy
-
-```bash
-cd devops/ansible
-# Edit inventory/hosts.yml with your server IP first
-ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml \
-  --extra-vars "docker_tag=latest"
-```
-
-### 7. Kubernetes Deploy
-
-```bash
-cd devops/kubernetes
-
-# Apply all manifests
-kubectl apply -f deployment.yaml
-kubectl apply -f service.yaml
-kubectl apply -f hpa.yaml
-
-# Watch pods scale
-kubectl get pods -n finshield -w
-
-# Watch HPA scaling
-kubectl get hpa -n finshield -w
-
-# Check rollout
-kubectl rollout status deployment/finshield-api -n finshield
-```
-
-### 8. Jenkins Setup
-
-1. Open http://localhost:8080
-2. Get initial password: `docker exec finshield-jenkins cat /var/jenkins_home/secrets/initialAdminPassword`
-3. Install suggested plugins + **Git**, **Docker**, **Kubernetes CLI**, **Pipeline** plugins
-4. Create credentials:
-   - `vault-root-token` → Secret text: `finshield-root-token`
-   - `dockerhub-credentials` → Username + Password (your Docker Hub)
-   - `kubeconfig` → Secret file (your `~/.kube/config`)
-5. Create Pipeline job → SCM: Git → Jenkinsfile path: `devops/jenkins/Jenkinsfile`
-6. Enable **GitHub hook trigger for GITScm polling**
-7. In GitHub repo → Settings → Webhooks → `http://<jenkins-ip>:8080/github-webhook/`
-
-### 9. Kibana Dashboard Setup
-
+### 4. Logging Setup (Kibana 8.x)
 1. Open http://localhost:5601
-2. Go to **Stack Management → Index Patterns**
-3. Create pattern: `finshield-*`
-4. Set `@timestamp` as time field
-5. Go to **Discover** → Filter by `finshield-transactions-*`
-6. Create visualizations:
-   - Bar chart: transactions by `transaction_type`
-   - Gauge: average `fraud_score`
-   - Line chart: transactions over time
-
-### 10. Stop Everything
-
-```bash
-cd devops/docker-compose
-docker compose down -v    # Remove volumes too
-# or
-docker compose down       # Keep data
-```
+2. Go to **Management > Stack Management > Data Views**.
+3. Create a data view named `finshield-*`.
+4. Go to **Discover** to see your logs flowing in real-time.
 
 ---
 
+## 📝 Configuration Management (Ansible)
+Located in `devops/ansible`, the playbooks can be used to perform environmental health checks and system configuration before the Jenkins deployment stage.
 
 ---
 
-## 🔐 Security Features (DevSecOps)
-
-- **Vault**: All credentials (DB, API keys, JWT, Docker Hub) stored in HashiCorp Vault — never in env files or code
-- **Non-root Docker**: App runs as `finshield` user in container
-- **Multi-stage build**: Lean final image without build tools
-- **Trivy scan**: Image vulnerability scanning in Jenkins pipeline
-- **K8s Secrets**: Vault tokens injected via K8s Secrets (not env literals)
-- **Live Patching**: Rolling update strategy with `maxUnavailable: 0` = zero downtime
-
----
-
-*FinShield — Built for CSE 816 Final Project | Finance Domain DevSecOps*
+*FinShield — Built for CSE 816 Final Project | Secure Finance Domain DevSecOps Infrastructure*
