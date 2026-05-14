@@ -193,8 +193,10 @@ pipeline {
                         # Update manifest with correct tag
                         sed -i "s|IMAGE_TAG|${DOCKER_TAG}|g" devops/kubernetes/deployment.yaml
 
-                        # Bridge Minikube network gap (192.168.49.2 -> host.docker.internal)
-                        sed -i "s|192.168.49.2|host.docker.internal|g" \$KUBECONFIG
+                        # Bridge Minikube network gap (Dynamic IP detection)
+                        HOST_IP=\$(ip route show | grep default | awk '{print \$3}')
+                        echo "Detected Host IP: \$HOST_IP"
+                        sed -i "s|192.168.49.2|\$HOST_IP|g" \$KUBECONFIG
 
                         # Apply changes
                         \$KUBECTL_CMD --kubeconfig=\$KUBECONFIG apply -f devops/kubernetes/deployment.yaml
