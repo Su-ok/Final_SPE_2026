@@ -51,13 +51,14 @@ pipeline {
         stage('🔐 Vault Secret Pull') {
         // ─────────────────────────────────────────────────────────────────────
             steps {
-                sh """
+                script {
                     echo "Fetching secrets from HashiCorp Vault..."
-                    DOCKERHUB_PASS=\$(curl -s -H "X-Vault-Token: \$VAULT_TOKEN" \
-                        \$VAULT_ADDR/v1/secret/data/finshield/dockerhub \
-                        | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data']['data']['password'])" 2>/dev/null || echo "")
-                    echo "Vault secret pull complete ✅"
-                """
+                    env.DOCKERHUB_PASS = sh(
+                        script: "curl -s -H \"X-Vault-Token: ${VAULT_TOKEN}\" ${VAULT_ADDR}/v1/secret/data/finshield/dockerhub | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d['data']['data']['password'])\"",
+                        returnStdout: true
+                    ).trim()
+                }
+                echo "Vault secret pull complete ✅"
             }
         }
 
