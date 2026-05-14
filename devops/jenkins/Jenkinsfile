@@ -52,18 +52,24 @@ pipeline {
         // ─────────────────────────────────────────────────────────────────────
             steps {
                 script {
-                    echo "Checking connectivity to Vault at ${VAULT_ADDR}..."
+                    echo "Detecting Vault connection..."
                     env.DOCKERHUB_PASS = sh(
                         script: """
-                            response=\$(curl -s -H "X-Vault-Token: ${VAULT_TOKEN}" ${VAULT_ADDR}/v1/secret/data/finshield/dockerhub)
-                            if [ -z "\$response" ]; then
-                                echo "ERROR: No response from Vault. Is it running?"
-                                exit 1
-                            fi
-                            echo "\$response" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data']['data']['password'])"
+                            # Try multiple possible hostnames
+                            for host in vault finshield-v3-vault-1 finshield-vault; do
+                                echo "Trying \$host..."
+                                response=\$(curl -s --connect-timeout 2 -H "X-Vault-Token: ${VAULT_TOKEN}" http://\$host:8200/v1/secret/data/finshield/dockerhub)
+                                if [ ! -z "\$response" ] && echo "\$response" | grep -q "data"; then
+                                    echo "✅ Connected to \$host"
+                                    echo "\$response" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data']['data']['password'])"
+                                    exit 0
+                                fi
+                            done
+                            echo "❌ ERROR: Could not reach Vault on any known hostname."
+                            exit 1
                         """,
                         returnStdout: true
-                    ).trim()
+                    ).trim().split('\n')[-1] // Get the last line (the password)
                 }
                 echo "Vault secret pull complete ✅"
             }
