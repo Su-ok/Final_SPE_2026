@@ -14,7 +14,7 @@ pipeline {
     }
 
     triggers {
-        githubPush()
+        pollSCM('H/1 * * * *') // Check GitHub for changes every minute
     }
 
     options {
