@@ -172,6 +172,25 @@ pipeline {
         }
 
         // ─────────────────────────────────────────────────────────────────────
+        stage('📦 Ansible Deployment') {
+        // ─────────────────────────────────────────────────────────────────────
+            steps {
+                sh """
+                    if command -v ansible-playbook > /dev/null 2>&1; then
+                        echo "🚀 Running Ansible Playbook..."
+                        cd devops/ansible
+                        ansible-playbook -i inventory/hosts.yml \
+                            playbooks/deploy.yml \
+                            --extra-vars "docker_tag=${DOCKER_TAG}" \
+                            -v || echo "⚠️ Ansible deploy step (non-fatal in local dev)"
+                    else
+                        echo "⚠️ Ansible not installed in Jenkins container, skipping stage."
+                    fi
+                """
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
         stage('☸️ Kubernetes Deploy') {
         // ─────────────────────────────────────────────────────────────────────
             steps {
