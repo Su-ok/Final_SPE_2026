@@ -21,7 +21,7 @@
     dest: "{{ compose_dir }}/docker-compose.yml"
     mode: '0644'
 
-- name: Stop existing containers (zero-downtime: new comes up first via K8s)
+- name: "Stop existing containers (zero-downtime: new comes up first via K8s)"
   community.docker.docker_compose_v2:
     project_src: "{{ compose_dir }}"
     state: present

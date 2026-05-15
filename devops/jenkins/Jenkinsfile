@@ -181,7 +181,11 @@ pipeline {
                         cd devops/ansible
                         ansible-playbook -i inventory/hosts.yml \
                             playbooks/deploy.yml \
-                            --extra-vars "docker_tag=${DOCKER_TAG}" \
+                            --extra-vars "docker_tag=${DOCKER_TAG} \
+                                          dockerhub_user=${DOCKERHUB_USER} \
+                                          dockerhub_pass=${DOCKERHUB_PASS} \
+                                          vault_token=${VAULT_TOKEN} \
+                                          vault_host=vault" \
                             -v || echo "⚠️ Ansible deploy step (non-fatal in local dev)"
                     else
                         echo "⚠️ Ansible not installed in Jenkins container, skipping stage."
