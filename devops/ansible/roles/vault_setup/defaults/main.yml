@@ -1,0 +1,10 @@
+---
+# Defaults for vault_setup role
+db_host: "db"
+db_port: 5432
+db_name: "finshield"
+db_user: "finuser"
+db_password: "password123"
+
+fraud_api_key: "fs-fraud-key-xyz"
+jwt_secret: "finshield-jwt-super-secret"
