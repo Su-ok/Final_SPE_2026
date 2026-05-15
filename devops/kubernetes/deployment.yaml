@@ -47,7 +47,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: finshield-api
-          image: siddheshmahajan/finshield-api:IMAGE_TAG
+          image: suchirokram/finshield-api:IMAGE_TAG
           imagePullPolicy: Always
           ports:
             - containerPort: 8000

@@ -6,16 +6,13 @@ pipeline {
 
     environment {
         APP_NAME        = "finshield-api"
-        DOCKERHUB_USER  = "siddheshmahajan"
+        DOCKERHUB_USER  = "suchirokram"
         DOCKER_TAG      = "${env.BUILD_NUMBER}"
         VAULT_ADDR      = "http://vault:8200"
         VAULT_TOKEN     = "finshield-root-token"
         KUBECONFIG_PATH = "/var/jenkins_home/.kube/config"
     }
 
-    triggers {
-        pollSCM('* * * * *') // Check GitHub for changes every single minute
-    }
 
     options {
         timestamps()

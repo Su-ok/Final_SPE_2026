@@ -198,12 +198,12 @@ services:
           jwt_secret=finshield-jwt-super-secret
 
         vault kv put secret/finshield/dockerhub \
-          username=siddheshmahajan \
-          password='Friends@123'
+          username=${DOCKERHUB_USERNAME} \
+          password='${DOCKERHUB_TOKEN}'
 
         vault kv put secret/finshield/dockerhub \
-          username=siddheshmahajan \
-          password='Friends@123'
+          username=${DOCKERHUB_USERNAME} \
+          password='${DOCKERHUB_TOKEN}'
 
         echo "Vault secrets initialized"
 
