@@ -192,7 +192,7 @@ pipeline {
 
                         # Bridge Minikube network gap (Final Solution)
                         # This replaces whatever IP Minikube has with the 'minikube' hostname
-                        sed -i -E "s|https://[0-9.]+:|https://minikube:|g" \$KUBECONFIG
+                        sed -i -E "s|https://[0-9.]+:|https://minikube:|g" "\$KUBECONFIG"
                         echo "Configured kubeconfig to use 'minikube' hostname"
 
                         # Apply changes
