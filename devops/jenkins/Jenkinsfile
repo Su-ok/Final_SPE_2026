@@ -196,8 +196,8 @@ pipeline {
                         echo "Configured kubeconfig to use 'minikube' hostname"
 
                         # Apply changes
-                        \$KUBECTL_CMD --kubeconfig=\$KUBECONFIG apply -f devops/kubernetes/deployment.yaml
-                        \$KUBECTL_CMD --kubeconfig=\$KUBECONFIG apply -f devops/kubernetes/service.yaml
+                        \$KUBECTL_CMD --kubeconfig="\$KUBECONFIG" apply -f devops/kubernetes/deployment.yaml
+                        \$KUBECTL_CMD --kubeconfig="\$KUBECONFIG" apply -f devops/kubernetes/service.yaml
 
                         echo "✅ Deployment successful"
                     """
