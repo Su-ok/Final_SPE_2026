@@ -15,6 +15,13 @@
     app_port: 8000
     vault_addr: "http://{{ vault_host }}:8200"
     compose_dir: /opt/finshield
+    db_host: "db"
+    db_port: 5432
+    db_name: "finshield"
+    db_user: "finuser"
+    db_password: "password123"
+    fraud_api_key: "fs-fraud-key-xyz"
+    jwt_secret: "finshield-jwt-super-secret"
 
   pre_tasks:
     - name: Show deployment info

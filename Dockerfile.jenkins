@@ -21,6 +21,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     ansible \
     && apt-get clean \
-    && ansible-galaxy collection install community.docker
+    && pip3 install --break-system-packages hvac \
+    && ansible-galaxy collection install community.docker community.hashi_vault
 
 USER jenkins
