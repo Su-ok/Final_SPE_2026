@@ -1,5 +1,5 @@
 // FinShield — Jenkins CI/CD Pipeline
-// Triggers on GitHub push → Build → Test → Docker Push → Deploy 
+// Triggers on GitHub push → Build → Test → Docker Push → Deploy  
 
 pipeline {
     agent any
